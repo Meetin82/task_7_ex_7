@@ -1,9 +1,6 @@
 package ru.vsu.cs.course1.graph;
 
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.Queue;
-import java.util.Stack;
+import java.util.*;
 import java.util.function.Consumer;
 
 public class GraphAlgorithms {
@@ -11,8 +8,9 @@ public class GraphAlgorithms {
     /**
      * Поиск в глубину, реализованный рекурсивно
      * (начальная вершина также включена)
-     * @param graph граф
-     * @param from Вершина, с которой начинается поиск
+     *
+     * @param graph   граф
+     * @param from    Вершина, с которой начинается поиск
      * @param visitor Посетитель
      */
     public static void dfsRecursion(Graph graph, int from, Consumer<Integer> visitor) {
@@ -35,8 +33,9 @@ public class GraphAlgorithms {
     /**
      * Поиск в глубину, реализованный с помощью стека
      * (не совсем "правильный"/классический, т.к. "в глубину" реализуется только "план" обхода, а не сам обход)
-     * @param graph граф
-     * @param from Вершина, с которой начинается поиск
+     *
+     * @param graph   граф
+     * @param from    Вершина, с которой начинается поиск
      * @param visitor Посетитель
      */
     public static void dfs(Graph graph, int from, Consumer<Integer> visitor) {
@@ -59,8 +58,9 @@ public class GraphAlgorithms {
     /**
      * Поиск в ширину, реализованный с помощью очереди
      * (начальная вершина также включена)
-     * @param graph граф
-     * @param from Вершина, с которой начинается поиск
+     *
+     * @param graph   граф
+     * @param from    Вершина, с которой начинается поиск
      * @param visitor Посетитель
      */
     public static void bfs(Graph graph, int from, Consumer<Integer> visitor) {
@@ -83,8 +83,9 @@ public class GraphAlgorithms {
     /**
      * Поиск в глубину в виде итератора
      * (начальная вершина также включена)
+     *
      * @param graph граф
-     * @param from Вершина, с которой начинается поиск
+     * @param from  Вершина, с которой начинается поиск
      * @return Итератор
      */
     public static Iterable<Integer> dfs(Graph graph, int from) {
@@ -102,7 +103,7 @@ public class GraphAlgorithms {
                 return new Iterator<Integer>() {
                     @Override
                     public boolean hasNext() {
-                        return ! stack.isEmpty();
+                        return !stack.isEmpty();
                     }
 
                     @Override
@@ -124,6 +125,7 @@ public class GraphAlgorithms {
     /**
      * Поиск в ширину в виде итератора
      * (начальная вершина также включена)
+     *
      * @param from Вершина, с которой начинается поиск
      * @return Итератор
      */
@@ -142,7 +144,7 @@ public class GraphAlgorithms {
                 return new Iterator<Integer>() {
                     @Override
                     public boolean hasNext() {
-                        return ! queue.isEmpty();
+                        return !queue.isEmpty();
                     }
 
                     @Override
@@ -159,5 +161,125 @@ public class GraphAlgorithms {
                 };
             }
         };
+    }
+
+
+    /**
+     * Алгоритм Дейкстры
+     * (простейшая реализация без приоритетной очереди за n^2)
+     */
+    public static class MinDistanceSearchResult {
+        public double d[];
+        public int from[];
+    }
+
+    public static MinDistanceSearchResult dijkstra(WeightedGraph graph, int source, int target) {
+        int n = graph.vertexCount();
+
+        double[] d = new double[n];
+        int[] from = new int[n];
+        boolean[] found = new boolean[n];
+
+        Arrays.fill(d, Double.MAX_VALUE);
+        d[source] = 0;
+        int prev = -1;
+        for (int i = 0; i < n; i++) {
+            // ищем "ненайденную" вершину с минимальным d[i]
+            // (в общем случае обращение к приоритетной очереди)
+            int curr = -1;
+            for (int j = 0; j < n; j++) {
+                if (!found[j] && (curr < 0 || d[j] < d[curr])) {
+                    curr = j;
+                }
+            }
+
+            found[curr] = true;
+            from[curr] = prev;
+            if (curr == target) {
+                break;
+            }
+            for (WeightedGraph.WeightedEdgeTo v : graph.adjacenciesWithWeights(curr)) {
+                if (d[curr] + v.weight() < d[v.to()]) {
+                    d[v.to()] = d[curr] + v.weight();
+                    // в общем случае надо было изменить в приоритетной очереди приоритет для v.to()
+                }
+            }
+        }
+
+        // возвращение результата
+        MinDistanceSearchResult result = new MinDistanceSearchResult();
+        result.d = d;
+        result.from = from;
+        return result;
+    }
+
+    /**
+     * Алгоритм Белмана-Форда
+     * O(n*m)
+     */
+    public static MinDistanceSearchResult belmanFord(WeightedGraph graph, int source) {
+        int n = graph.vertexCount();
+
+        double[] d = new double[n];
+        int[] from = new int[n];
+
+        Arrays.fill(d, Double.MAX_VALUE);
+        d[source] = 0;
+        for (int i = 0; i < n - 1; i++) {
+            boolean changed = false;
+            // обход всех связей (в данной реализации - цикл в цикле)
+            for (int j = 0; j < n; j++) {
+                for (WeightedGraph.WeightedEdgeTo v : graph.adjacenciesWithWeights(j)) {
+                    if (d[v.to()] > d[j] + v.weight()) {
+                        d[v.to()] = d[j] + v.weight();
+                        from[v.to()] = j;
+                        changed = true;
+                    }
+                }
+            }
+            if (!changed) {
+                break;
+            }
+        }
+
+        // возвращение результата
+        MinDistanceSearchResult result = new MinDistanceSearchResult();
+        result.d = d;
+        result.from = from;
+        return result;
+    }
+
+    public List<Integer> acquaintVertexes(Graph graph) {
+        if (graph == null) {
+            return null;
+        }
+        List<List<Integer>> listWithLists = new ArrayList<>();
+
+        for (int i = 0; i < graph.vertexCount(); i++) {
+            List<Integer> list = new ArrayList<>();
+            for (Integer v : GraphAlgorithms.bfs(graph, i)) {
+                    list.add(v);
+            }
+            listWithLists.add(list);
+        }
+
+        for (int i = 0; i < listWithLists.size(); i++) {
+            for (int j = 0; j < listWithLists.get(0).size(); j++) {
+                if (i != listWithLists.size() - 1) {
+                    if (listWithLists.get(i).size() == listWithLists.get(i + 1).size()) {
+                        if (listWithLists.get(i).contains(listWithLists.get(i + 1).get(j)) && i != listWithLists.size() - 1) {
+                            listWithLists.remove(i);
+                            i = -1;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        List<Integer> listResult = new ArrayList<>();
+        for (List<Integer> listWithList : listWithLists) {
+            listResult.add(listWithList.get(0));
+        }
+        return listResult;
     }
 }
